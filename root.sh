@@ -22,7 +22,6 @@ if [ ! -e $ROOTFS_DIR/.installed ]; then
   echo "#"
   echo "#                           Copyright (C) 2024, RecodeStudios.Cloud"
   echo "#"
-  echo "#"
   echo "#######################################################################################"
 
   read -p "Do you want to install Ubuntu? (YES/no): " install_ubuntu
@@ -30,7 +29,7 @@ fi
 
 case $install_ubuntu in
   [yY][eE][sS])
-    wget --tries=$max_retries --timeout=$timeout --no-hsts -O /tmp/rootfs.tar.gz \
+    curl --retry $max_retries --max-time $timeout -L -o /tmp/rootfs.tar.gz \
       "http://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.4-base-${ARCH_ALT}.tar.gz"
     tar -xf /tmp/rootfs.tar.gz -C $ROOTFS_DIR
     ;;
@@ -40,12 +39,14 @@ case $install_ubuntu in
 esac
 
 if [ ! -e $ROOTFS_DIR/.installed ]; then
-  mkdir $ROOTFS_DIR/usr/local/bin -p
-  wget --tries=$max_retries --timeout=$timeout --no-hsts -O $ROOTFS_DIR/usr/local/bin/proot "https://raw.githubusercontent.com/foxytouxxx/freeroot/main/proot-${ARCH}"
+  mkdir -p $ROOTFS_DIR/usr/local/bin
+  curl --retry $max_retries --max-time $timeout -L -o $ROOTFS_DIR/usr/local/bin/proot \
+    "https://raw.githubusercontent.com/foxytouxxx/freeroot/main/proot-${ARCH}"
 
   while [ ! -s "$ROOTFS_DIR/usr/local/bin/proot" ]; do
-    rm $ROOTFS_DIR/usr/local/bin/proot -rf
-    wget --tries=$max_retries --timeout=$timeout --no-hsts -O $ROOTFS_DIR/usr/local/bin/proot "https://raw.githubusercontent.com/foxytouxxx/freeroot/main/proot-${ARCH}"
+    rm -rf $ROOTFS_DIR/usr/local/bin/proot
+    curl --retry $max_retries --max-time $timeout -L -o $ROOTFS_DIR/usr/local/bin/proot \
+      "https://raw.githubusercontent.com/foxytouxxx/freeroot/main/proot-${ARCH}"
 
     if [ -s "$ROOTFS_DIR/usr/local/bin/proot" ]; then
       chmod 755 $ROOTFS_DIR/usr/local/bin/proot
@@ -67,7 +68,6 @@ fi
 
 CYAN='\e[0;36m'
 WHITE='\e[0;37m'
-
 RESET_COLOR='\e[0m'
 
 display_gg() {
