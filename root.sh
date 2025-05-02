@@ -2,7 +2,6 @@
 
 ROOTFS_DIR=$(pwd)
 export PATH=$PATH:~/.local/usr/bin
-max_retries=50
 timeout=1
 ARCH=$(uname -m)
 
@@ -14,6 +13,23 @@ else
   printf "Unsupported CPU architecture: ${ARCH}"
   exit 1
 fi
+
+download_rootfs() {
+  while true; do
+    echo "Downloading Ubuntu rootfs..."
+    curl -L --max-time $timeout -o /tmp/rootfs.tar.gz \
+      "http://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.4-base-${ARCH_ALT}.tar.gz"
+    
+    if [ $? -eq 0 ] && [ -s /tmp/rootfs.tar.gz ]; then
+      echo "Download successful!"
+      break
+    else
+      echo "Download failed. Retrying in 1 second..."
+      rm -f /tmp/rootfs.tar.gz
+      sleep 1
+    fi
+  done
+}
 
 if [ ! -e $ROOTFS_DIR/.installed ]; then
   echo "#######################################################################################"
@@ -29,8 +45,7 @@ fi
 
 case $install_ubuntu in
   [yY][eE][sS])
-    curl --retry $max_retries --max-time $timeout -L -o /tmp/rootfs.tar.gz \
-      "http://cdimage.ubuntu.com/ubuntu-base/releases/20.04/release/ubuntu-base-20.04.4-base-${ARCH_ALT}.tar.gz"
+    download_rootfs
     tar -xf /tmp/rootfs.tar.gz -C $ROOTFS_DIR
     ;;
   *)
@@ -40,24 +55,21 @@ esac
 
 if [ ! -e $ROOTFS_DIR/.installed ]; then
   mkdir -p $ROOTFS_DIR/usr/local/bin
-  curl --retry $max_retries --max-time $timeout -L -o $ROOTFS_DIR/usr/local/bin/proot \
-    "https://raw.githubusercontent.com/foxytouxxx/freeroot/main/proot-${ARCH}"
 
-  while [ ! -s "$ROOTFS_DIR/usr/local/bin/proot" ]; do
-    rm -rf $ROOTFS_DIR/usr/local/bin/proot
-    curl --retry $max_retries --max-time $timeout -L -o $ROOTFS_DIR/usr/local/bin/proot \
+  while true; do
+    echo "Downloading proot binary..."
+    curl -L --max-time $timeout -o $ROOTFS_DIR/usr/local/bin/proot \
       "https://raw.githubusercontent.com/foxytouxxx/freeroot/main/proot-${ARCH}"
 
-    if [ -s "$ROOTFS_DIR/usr/local/bin/proot" ]; then
+    if [ $? -eq 0 ] && [ -s $ROOTFS_DIR/usr/local/bin/proot ]; then
       chmod 755 $ROOTFS_DIR/usr/local/bin/proot
       break
+    else
+      echo "Failed to download proot. Retrying in 1 second..."
+      rm -f $ROOTFS_DIR/usr/local/bin/proot
+      sleep 1
     fi
-
-    chmod 755 $ROOTFS_DIR/usr/local/bin/proot
-    sleep 1
   done
-
-  chmod 755 $ROOTFS_DIR/usr/local/bin/proot
 fi
 
 if [ ! -e $ROOTFS_DIR/.installed ]; then
